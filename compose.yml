@@ -1,0 +1,65 @@
+services:
+  db:
+    container_name: db
+    image: postgres:17.5-alpine
+    restart: unless-stopped
+    # set shared memory limit when using docker compose
+    shm_size: 128mb
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_HOST_PORT}:5432"
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+
+  backend:
+    container_name: backend
+    depends_on:
+      - db
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${API_HOST_PORT}:${API_SERVER_PORT}"
+    environment:
+      NODE_ENV: ${API_NODE_ENV}
+      PORT: ${API_SERVER_PORT}
+      DB_TYPE: ${API_DB_TYPE}
+      DB_HOST: ${API_DB_HOST}
+      DB_PORT: ${API_DB_PORT}
+      DB_NAME: ${API_DB_NAME}
+      DB_USERNAME: ${API_DB_USERNAME}
+      DB_PASSWORD: ${API_DB_PASSWORD}
+      ENTITIES_PATH_GLOB: ${API_ENTITIES_PATH_GLOB}
+      MIGRATIONS_PATH_GLOB: ${API_MIGRATIONS_PATH_GLOB}
+      RUN_MIGRATIONS: ${API_RUN_MIGRATIONS}
+
+  frontend:
+    container_name: frontend
+    depends_on:
+      - backend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_BASE_URL: ${FRONTEND_API_BASE_URL}
+        USER_INFO_KEY: ${FRONTEND_USER_INFO_KEY}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_HOST_PORT}:80"
+  
+  frontend-local:
+    container_name: frontend-local
+    depends_on:
+      - backend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_BASE_URL: ${FRONTEND_LOCAL_API_BASE_URL}
+        USER_INFO_KEY: ${FRONTEND_USER_INFO_KEY}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_LOCAL_HOST_PORT}:80"
